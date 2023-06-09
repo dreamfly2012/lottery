@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Admin Panel</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .red-ball {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #ff4c4c;
+            margin: 5px;
+            padding: 5px;
+            color: white;
+        }
+
+        .blue-ball {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #4c4cff;
+            margin: 5px;
+            padding: 5px;
+            color: white;
+        }
+
+        form {
+            border: 1px solid #ccc;
+            background-color: #f2f2f2;
+            padding: 20px;
+            max-width: 500px;
+            margin: auto;
+            overflow: auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            box-sizing: border-box;
+            border: none;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+            clear: both;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>添加自己购买的双色球</h1>
+    <table>
+        <tr>
+            <th>期号</th>
+            <th>红球</th>
+            <th>蓝球</th>
+            <th>日期</th>
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row[1] }}</td>
+            <td>
+                <span class="red-ball">{{ row[2] }}</span>
+                <span class="red-ball">{{ row[3] }}</span>
+                <span class="red-ball">{{ row[4] }}</span>
+                <span class="red-ball">{{ row[5] }}</span>
+                <span class="red-ball">{{ row[6] }}</span>
+                <span class="red-ball">{{ row[7] }}</span>
+            </td>
+            <td>
+                <span class="blue-ball">{{ row[8] }}</span>
+            </td>
+            <td>{{ row[9] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <form action="/add" method="post">
+        <label for="qihao">期号:</label>
+        <input type="text" name="qihao" id="qihao"><br>
+        <label for="red1">红球1:</label>
+        <input type="text" name="red1" id="red1"><br>
+        <label for="red2">红球2:</label>
+        <input type="text" name="red2" id="red2"><br>
+        <label for="red3">红球3:</label>
+        <input type="text" name="red3" id="red3"><br>
+        <label for="red4">红球4:</label>
+        <input type="text" name="red4" id="red4"><br>
+        <label for="red5">红球5:</label>
+        <input type="text" name="red5" id="red5"><br>
+        <label for="red6">红球6:</label>
+        <input type="text" name="red6" id="red6"><br>
+        <label for="blue">蓝球:</label>
+        <input type="text" name="blue" id="blue"><br>
+        <label for="date">日期:</label>
+        <input type="text" name="date" id="date"><br>
+        <input type="submit" value="添加">
+    </form>
+</body>
+
+</html>
