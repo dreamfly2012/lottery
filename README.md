@@ -1,7 +1,230 @@
-福彩3d数据抓取分析
+# 彩票数据自动更新系统
 
-福彩大色球抓取分析
+本系统用于自动抓取并更新彩票开奖数据，支持大乐透、双色球和福彩3D，提供定时更新和数据存储功能。
 
-体彩大乐透抓取分析
+## 功能特点
 
+- 支持三种彩票数据抓取：
+  - 大乐透
+  - 双色球
+  - 福彩3D
+- 自动计算最新期号
+- 每天凌晨2点自动更新数据
+- 支持数据去重和完整性检查
+- 数据存储在SQLite数据库中
 
+## 系统要求
+
+- Python 3.x
+- 虚拟环境（推荐）
+- 必要的Python包（见requirements.txt）：
+  - requests==2.31.0
+  - schedule==1.2.2
+
+## 安装步骤
+
+1. 创建并激活虚拟环境：
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+2. 安装依赖：
+```bash
+pip install -r requirements.txt
+```
+
+## 使用方法
+
+### 手动运行数据更新
+
+更新大乐透数据：
+```bash
+python3 dlt_scrapy.py
+```
+
+更新双色球数据：
+```bash
+python3 ssq_scrapy.py
+```
+
+更新福彩3D数据：
+```bash
+python3 fc3d_scrapy.py
+```
+
+### 启动自动更新服务（同时更新三种彩票）
+
+```bash
+python3 update_lottery.py
+```
+
+自动更新服务会：
+- 立即执行一次数据更新（三种彩票）
+- 设置每天凌晨2点自动更新
+- 保持后台运行直到手动停止（Ctrl+C）
+
+### 后台运行（Linux/Unix系统）
+
+使用 nohup 命令在后台运行：
+```bash
+nohup python3 update_lottery.py > lottery_update.log 2>&1 &
+```
+
+使用 screen 会话运行：
+```bash
+screen -S lottery
+python3 update_lottery.py
+# 按 Ctrl+A 然后按 D 分离会话
+```
+
+重新连接 screen 会话：
+```bash
+screen -r lottery
+```
+
+## 数据库说明
+
+数据存储在 `lottery.db` 文件中，使用SQLite数据库。
+
+### 大乐透表结构（dlt）：
+```sql
+CREATE TABLE dlt (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qihao TEXT NOT NULL UNIQUE,
+    red1 INTEGER NOT NULL,
+    red2 INTEGER NOT NULL,
+    red3 INTEGER NOT NULL,
+    red4 INTEGER NOT NULL,
+    red5 INTEGER NOT NULL,
+    blue1 INTEGER NOT NULL,
+    blue2 INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 双色球表结构（ssq）：
+```sql
+CREATE TABLE ssq (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qihao TEXT NOT NULL UNIQUE,
+    red1 INTEGER NOT NULL,
+    red2 INTEGER NOT NULL,
+    red3 INTEGER NOT NULL,
+    red4 INTEGER NOT NULL,
+    red5 INTEGER NOT NULL,
+    red6 INTEGER NOT NULL,
+    blue INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 福彩3D表结构（fc3d）：
+```sql
+CREATE TABLE fc3d (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qihao TEXT NOT NULL UNIQUE,
+    bai INTEGER NOT NULL,
+    shi INTEGER NOT NULL,
+    ge INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 数据查询示例
+
+### 大乐透查询：
+```sql
+-- 查询最新一期数据
+SELECT * FROM dlt ORDER BY qihao DESC LIMIT 1;
+```
+
+### 双色球查询：
+```sql
+-- 查询最新一期数据
+SELECT * FROM ssq ORDER BY qihao DESC LIMIT 1;
+```
+
+### 福彩3D查询：
+```sql
+-- 查询最新一期数据
+SELECT * FROM fc3d ORDER BY qihao DESC LIMIT 1;
+
+-- 查询某个日期范围的数据
+SELECT * FROM fc3d 
+WHERE date BETWEEN '2023-01-01' AND '2023-12-31' 
+ORDER BY qihao;
+```
+
+### 福彩3D Python查询API
+
+系统提供 `FC3DQuery` 类用于高级查询功能：
+
+```python
+from fc3d_query import FC3DQuery
+
+# 初始化查询器
+query = FC3DQuery()
+
+# 查询最近5期开奖结果
+results = query.get_recent_results(5)
+for r in results:
+    print(f"{r.qihao}期: {r.bai}{r.shi}{r.ge}")
+
+# 统计号码出现次数
+count = query.count_occurrences((6,2,1))  # 统计号码621出现次数
+print(f"出现次数: {count}")
+
+# 查询前后记录
+adjacent = query.get_adjacent_records("2025118")
+print(f"前一期: {adjacent['prev'].qihao if adjacent['prev'] else '无'}")
+print(f"后一期: {adjacent['next'].qihao if adjacent['next'] else '无'}")
+```
+
+#### API功能说明
+- `get_recent_results(limit)` - 查询最近N期开奖结果
+- `count_occurrences((bai,shi,ge))` - 统计指定号码出现次数
+- `get_adjacent_records(qihao)` - 查询指定期号的前后记录
+- `get_by_qihao(qihao)` - 按期号查询详细开奖信息
+
+## 注意事项
+
+1. 程序会自动计算最新期号，但实际数据以500彩票网的更新为准
+2. 每次更新会保留现有数据，使用INSERT OR REPLACE语句更新数据
+3. 建议在服务器上使用 screen 或 nohup 运行自动更新服务
+4. 确保系统时间准确，因为自动更新基于系统时间
+
+## 错误处理
+
+如果遇到数据更新失败，程序会：
+1. 自动重试（最多3次）
+2. 记录错误信息
+3. 继续保持运行，等待下次更新
+4. 单个彩种更新失败不会影响其他彩种的更新
+
+## 维护建议
+
+1. 定期检查日志，确保更新正常进行
+2. 监控数据库大小和完整性
+3. 必要时可以手动触发更新
+4. 定期备份数据库文件
+
+## 版本历史
+
+- v1.2.0 (2024-05-09)
+  - 添加福彩3D数据抓取功能
+  - 更新自动更新服务支持三种彩票
+  - 优化数据库结构
+
+- v1.1.0 (2024-05-09)
+  - 添加双色球数据抓取功能
+  - 更新自动更新服务支持多彩种
+  - 改进错误处理机制
+
+- v1.0.0 (2024-05-09)
+  - 初始版本
+  - 实现大乐透数据抓取和自动更新功能
+  - 添加数据库存储和查询功能

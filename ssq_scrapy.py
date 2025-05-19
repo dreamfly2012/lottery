@@ -2,7 +2,7 @@ import requests
 from html.parser import HTMLParser
 import sqlite3
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 
 class LotteryParser(HTMLParser):
@@ -33,7 +33,7 @@ class LotteryParser(HTMLParser):
             self.in_tbody = False
         elif tag == 'tr':
             self.in_tr = False
-            if len(self.current_row) >= 15:  # 确保有足够的数据
+            if len(self.current_row) >= 16:  # 确保有足够的数据
                 try:
                     self.lottery_data.append({
                         'qihao': self.current_row[0],
@@ -42,9 +42,9 @@ class LotteryParser(HTMLParser):
                         'red3': int(self.current_row[3]),
                         'red4': int(self.current_row[4]),
                         'red5': int(self.current_row[5]),
-                        'blue1': int(self.current_row[6]),
-                        'blue2': int(self.current_row[7]),
-                        'date': self.current_row[14]
+                        'red6': int(self.current_row[6]),
+                        'blue': int(self.current_row[7]),
+                        'date': self.current_row[15]
                     })
                 except (IndexError, ValueError) as e:
                     print(f"解析行数据失败: {e}")
@@ -59,83 +59,41 @@ class LotteryParser(HTMLParser):
                 self.current_row.append(data)
 
 def create_database(db_path="lottery.db"):
-    """创建新的数据库"""
-    # 如果数据库文件存在，先删除它
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        print(f"已删除旧的数据库文件: {db_path}")
-    
+    """创建新的数据库表"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    cursor.execute(
-        """CREATE TABLE IF NOT EXISTS dlt
-              (id INTEGER PRIMARY KEY AUTOINCREMENT,
-               qihao TEXT NOT NULL UNIQUE,
-               red1 INTEGER NOT NULL,
-               red2 INTEGER NOT NULL,
-               red3 INTEGER NOT NULL,
-               red4 INTEGER NOT NULL,
-               red5 INTEGER NOT NULL,
-               blue1 INTEGER NOT NULL,
-               blue2 INTEGER NOT NULL,
-               date TEXT NOT NULL,
-               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"""
-    )
+    # 创建双色球表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ssq
+        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+         qihao TEXT NOT NULL UNIQUE,
+         red1 INTEGER NOT NULL,
+         red2 INTEGER NOT NULL,
+         red3 INTEGER NOT NULL,
+         red4 INTEGER NOT NULL,
+         red5 INTEGER NOT NULL,
+         red6 INTEGER NOT NULL,
+         blue INTEGER NOT NULL,
+         date TEXT NOT NULL,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)
+    """)
     
     conn.commit()
     return conn, cursor
 
 def calculate_latest_issue():
     """计算最新期号"""
-    # 大乐透每周一、三、六开奖
-    # 2025年第50期的日期是2025-05-07（周三）
-    base_date = datetime(2025, 5, 7)
-    base_issue = 25050
-    
+    # 双色球每周二、四、日开奖
+    # 以当前日期计算最新期号
     today = datetime.now()
-    
-    # 如果今天在基准日期之前，直接返回基准期号
-    if today <= base_date:
-        return str(base_issue)
-    
-    # 计算从基准日期到今天的天数
-    days_diff = (today - base_date).days
-    
-    # 计算周数和剩余天数
-    weeks = days_diff // 7
-    remaining_days = days_diff % 7
-    
-    # 基准日期是周三，计算额外的期数
-    extra_periods = 0
-    base_weekday = 2  # 周三是2
-    today_weekday = today.weekday()
-    
-    if remaining_days > 0:
-        # 根据剩余天数计算额外期数
-        if base_weekday <= today_weekday:
-            days_to_count = today_weekday - base_weekday
-        else:
-            days_to_count = 7 - (base_weekday - today_weekday)
-            
-        # 统计这些天中有多少个开奖日（周一、周三、六）
-        for i in range(base_weekday, base_weekday + days_to_count + 1):
-            day = i % 7
-            if day in [0, 2, 5]:  # 周一(0)、周三(2)、周六(5)
-                extra_periods += 1
-    
-    # 每周3期，加上额外的期数
-    total_new_periods = weeks * 3 + extra_periods
-    latest_issue = base_issue + total_new_periods
-    
-    # 返回8位期号格式
-    year = str(today.year)[-2:]  # 取年份后两位
-    period = str(latest_issue)[-3:]  # 取期号后三位
-    return f"{year}{period.zfill(3)}"
+    # 由于双色球期号规则比较复杂，这里返回一个足够大的期号
+    # 实际数据会以网站上的为准
+    return f"{today.year}150"
 
 def fetch_lottery_data(start, end, max_retries=3):
-    """获取指定期号范围的大乐透数据"""
-    url = f"https://datachart.500.com/dlt/history/newinc/history.php?start={start}&end={end}"
+    """获取指定期号范围的双色球数据"""
+    url = f"https://datachart.500.com/ssq/history/newinc/history.php?start={start}&end={end}"
     
     for attempt in range(max_retries):
         try:
@@ -171,11 +129,11 @@ def save_to_database(data, db_path="lottery.db"):
     for item in sorted_data:
         try:
             cursor.execute(
-                """INSERT INTO dlt 
-                   (qihao, red1, red2, red3, red4, red5, blue1, blue2, date)
+                """INSERT OR REPLACE INTO ssq 
+                   (qihao, red1, red2, red3, red4, red5, red6, blue, date)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (item['qihao'], item['red1'], item['red2'], item['red3'],
-                 item['red4'], item['red5'], item['blue1'], item['blue2'],
+                 item['red4'], item['red5'], item['red6'], item['blue'],
                  item['date'])
             )
             success_count += 1
@@ -192,7 +150,7 @@ def save_to_database(data, db_path="lottery.db"):
             MIN(qihao) as first_issue,
             MAX(qihao) as last_issue,
             COUNT(DISTINCT qihao) as unique_issues
-        FROM dlt
+        FROM ssq
     """)
     stats = cursor.fetchone()
     print(f"\n数据统计:")
@@ -205,7 +163,7 @@ def save_to_database(data, db_path="lottery.db"):
         SELECT 
             substr(date,1,4) as year,
             COUNT(*) as count
-        FROM dlt 
+        FROM ssq 
         GROUP BY year 
         ORDER BY year
     """)
@@ -217,10 +175,10 @@ def save_to_database(data, db_path="lottery.db"):
 
 def main():
     """主函数"""
-    start = "18021"  # 起始期号
+    start = "03001"  # 起始期号
     end = calculate_latest_issue()  # 动态计算最新期号
     
-    print(f"开始获取大乐透数据 (期号范围: {start}-{end})...")
+    print(f"开始获取双色球数据 (期号范围: {start}-{end})...")
     lottery_data = fetch_lottery_data(start, end)
     
     if lottery_data:
