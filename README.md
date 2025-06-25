@@ -190,6 +190,153 @@ print(f"后一期: {adjacent['next'].qihao if adjacent['next'] else '无'}")
 - `get_adjacent_records(qihao)` - 查询指定期号的前后记录
 - `get_by_qihao(qihao)` - 按期号查询详细开奖信息
 
+### 历史号码上下文查询
+系统提供历史号码查询功能，可以查找特定号码的所有历史记录及其前后期数据：
+
+```python
+from fc3d_history_context import FC3DHistoryContext
+
+query = FC3DHistoryContext()
+# 查找号码645的历史记录及前后3期数据
+results = query.find_number_with_context((6,4,5), 3)
+
+# 显示所有匹配记录及其上下文
+for result in results:
+    for period in result["all_periods"]:
+        print(format_period(period, (6,4,5)))
+```
+
+输出示例：
+```
+=== 记录组 1 ===
+期号: 2025130 号码: 204 日期: 2025-05-20
+期号: 2025131 号码: 203 日期: 2025-05-21
+期号: 2025132 号码: 689 日期: 2025-05-22
+期号: 2025133 号码: [645] 日期: 2025-05-23  # 匹配号码用[]标记
+...
+```
+
+特点：
+- 按时间顺序显示所有期数
+- 使用方括号[]标记匹配的号码
+- 每组记录显示完整的前后文信息
+
+### 连续和值查询
+系统提供连续和值查询功能，可以查找连续几期和值符合指定序列的期数：
+
+```python
+from fc3d_sum_sequence import FC3DSumSequence
+
+query = FC3DSumSequence()
+# 查找连续三期和值为5,23,15的期数及前后3期数据
+results = query.find_consecutive_sums([5, 23, 15], 3)
+
+# 显示所有匹配记录及其上下文
+for result in results:
+    print(f"匹配期数范围: {result['match_start_qihao']} 至 {result['match_end_qihao']}")
+    for period in result["all_periods"]:
+        print(format_period(period, is_match=True if period[0] >= result['match_start_qihao'] and period[0] <= result['match_end_qihao'] else False))
+```
+
+输出示例：
+```
+=== 匹配记录 1 ===
+匹配期数范围: 2025131 至 2025133
+
+期号: 2025128 号码: 814 和值: 13 日期: 2025-05-18
+期号: 2025129 号码: 915 和值: 15 日期: 2025-05-19
+期号: 2025130 号码: 204 和值: 6 日期: 2025-05-20
+期号: 2025131 号码: [203] 和值: [5] 日期: 2025-05-21
+期号: 2025132 号码: [689] 和值: [23] 日期: 2025-05-22
+期号: 2025133 号码: [645] 和值: [15] 日期: 2025-05-23
+```
+
+特点：
+- 可查询连续多期和值符合特定序列的期数
+- 显示匹配期数及其前后期数据
+- 使用方括号[]标记匹配的号码和和值
+
+### 条件概率统计
+系统提供条件概率统计功能，可以分析某个数字后面出现各个数字的概率：
+
+```python
+from fc3d_conditional_probability import FC3DConditionalProbability
+
+query = FC3DConditionalProbability()
+
+# 统计百位6后面出现各个数字的概率
+probs = query.calculate_next_digit_probability('bai', 6)
+for digit, prob in sorted(probs.items()):
+    print(f"数字 {digit}: {prob:.2%}")
+
+# 统计指定组合后面出现各个数字的概率
+conditions = {'bai': 6, 'shi': 4, 'ge': 5}
+probs = query.calculate_next_digits_probability(conditions)
+for position in ['bai', 'shi', 'ge']:
+    print(f"\n{position}位:")
+    for digit, prob in sorted(probs[position].items()):
+        print(f"数字 {digit}: {prob:.2%}")
+```
+
+输出示例：
+```
+百位6后面出现各个数字的概率:
+数字 0: 10.48%
+数字 1: 9.68%
+数字 2: 9.15%
+...
+
+组合 {'bai': 6, 'shi': 4, 'ge': 5} 后面出现各个数字的概率:
+bai位:
+数字 0: 12.50%
+数字 1: 0.00%
+数字 2: 0.00%
+...
+```
+
+特点：
+- 支持单个位置的后续数字概率统计
+- 支持多个位置组合的后续数字概率统计
+- 概率以百分比形式展示
+
+### 连号查询功能
+系统提供专门的连号查询功能，可以查找百位、十位、个位的连号情况：
+
+```python
+from fc3d_consecutive import FC3DConsecutiveQuery
+
+query = FC3DConsecutiveQuery()
+
+# 查询百位连号
+results = query.find_consecutive_numbers('bai')
+for qihao1, num1, qihao2, num2 in results:
+    print(f"期号: {qihao1} -> {qihao2}, 号码: {num1} -> {num2}")
+
+# 查询十位连号
+results = query.find_consecutive_numbers('shi')
+
+# 查询个位连号
+results = query.find_consecutive_numbers('ge')
+```
+
+示例输出：
+```
+=== 百位连号情况 ===
+期号: 2025128 -> 2025129 号码: 8 -> 9
+期号: 2025126 -> 2025127 号码: 3 -> 4
+...
+
+=== 十位连号情况 ===
+期号: 2025130 -> 2025129 号码: 0 -> 1
+期号: 2025126 -> 2025127 号码: 2 -> 3
+...
+
+=== 个位连号情况 ===
+期号: 2025131 -> 2025130 号码: 3 -> 4
+期号: 2025130 -> 2025129 号码: 4 -> 5
+...
+```
+
 ## 注意事项
 
 1. 程序会自动计算最新期号，但实际数据以500彩票网的更新为准

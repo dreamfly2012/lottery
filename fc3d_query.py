@@ -172,45 +172,53 @@ if __name__ == "__main__":
     # print(f"期号 {sample_qihao} 的上期记录: {adjacent['prev'].qihao if adjacent['prev'] else '无'}")
     # print(f"期号 {sample_qihao} 的下期记录: {adjacent['next'].qihao if adjacent['next'] else '无'}")
     query = FC3DQuery()
+    output_lines = []
 
     print("=== 最近10期开奖结果 ===")
+    output_lines.append(f"\n=== 最近10期开奖结果 ===\n")    
     for result in query.get_recent_results(10):
         print(f"期号: {result.qihao}, 号码: {result.bai}{result.shi}{result.ge}, 开奖日期: {result.date}")
+        output_lines.append(f"期号: {result.qihao}, 号码: {result.bai}{result.shi}{result.ge}, 开奖日期: {result.date}")
+
+    
 
     # 自动获取最近3期的百、十、个位数字序列
     recent3 = query.get_recent_results(3)
-    if len(recent3) == 3:
-        bai_seq = [r.bai for r in reversed(recent3)]
-        shi_seq = [r.shi for r in reversed(recent3)]
-        ge_seq = [r.ge for r in reversed(recent3)]
 
-        output_lines = []
+  
+
+    
+    if len(recent3) == 3:
+        bai_seq = [r.bai for r in recent3]
+        shi_seq = [r.shi for r in recent3]
+        ge_seq = [r.ge for r in recent3]
+
+        
 
         for pos, seq, label in zip(
             ['bai', 'shi', 'ge'],
             [bai_seq, shi_seq, ge_seq],
             ['百位', '十位', '个位']
         ):
-            output_lines.append(f"\n=== 最近三期{label}连号 {seq} 的历史中间期号及前后5期（倒序排列） ===")
+            output_lines.append(f"\n=== 最近三期{label}连号 {seq} 的历史中间期号及前后5期 ===")
             qihaos = query.find_position_sequence(pos, seq)
-            # 按期号升序排列（最新在最后）
-            qihaos_sorted = sorted(qihaos)
-            for qihao in qihaos_sorted:
+           
+            for qihao in qihaos:
                 output_lines.append(f"\n--- {label}连号中间期号: {qihao} 前后5期 ---")
                 results = query.get_surrounding_results(qihao, 5)
-                # 按期号升序排列
-                results_sorted = sorted(results, key=lambda x: x.qihao)
-                for r in results_sorted:
+                
+                for r in results:
                     output_lines.append(f"期号: {r.qihao}, 百位: {r.bai}, 十位: {r.shi}, 个位: {r.ge}, 日期: {r.date}")
 
         # 输出到屏幕
         for line in output_lines:
             print(line)
 
+       
         # 写入文件
-        with open("连号历史结果.txt", "w", encoding="utf-8") as f:
+        with open("out.txt", "w", encoding="utf-8") as f:
             for line in output_lines:
                 f.write(line + "\n")
-        print("\n结果已写入文件：连号历史结果.txt")
+        print("\n结果已写入文件：out.txt")
     else:
         print("数据不足3期，无法自动查询连号。")
